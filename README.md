@@ -116,6 +116,11 @@ compose.dev.yml       Hot-reload development stack
 compose.prod.yml      Non-bind-mounted production stack
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
+
 ## GitHub automation
 
 Pull requests and pushes to `main` run the CI workflow in `.github/workflows/ci.yml`. It checks the C# API, FastAPI service, Next.js frontend, PostgreSQL and Neo4j migrations, production image builds, Compose configuration, Semgrep, and CodeQL. Dependabot monitors the Dockerfiles, npm dependencies, Python dependencies, and GitHub Actions.
