@@ -1,0 +1,147 @@
+name: recipe-app-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-recipes_db}
+      POSTGRES_USER: ${POSTGRES_USER:-recipes_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set}
+    volumes:
+      - neo4j_prod_data:/data
+      - neo4j_prod_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --spider http://127.0.0.1:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+  migrations:
+    image: ${RECIPE_IMAGE_PREFIX:-recipe-app}-migrations:${RECIPE_IMAGE_TAG:-latest}
+    build:
+      context: ./migrations
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-recipes_db}
+      POSTGRES_USER: ${POSTGRES_USER:-recipes_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["upgrade", "head"]
+    restart: "no"
+
+  neo4j-migrations:
+    image: ${RECIPE_IMAGE_PREFIX:-recipe-app}-neo4j-migrations:${RECIPE_IMAGE_TAG:-latest}
+    build:
+      context: ./neo4j-migrations
+      dockerfile: Dockerfile
+    environment:
+      NEO4J_HOST: ${NEO4J_HOST:-neo4j}
+      NEO4J_BOLT_PORT: ${NEO4J_BOLT_PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set}
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: ${RECIPE_IMAGE_PREFIX:-recipe-app}-api:${RECIPE_IMAGE_TAG:-latest}
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-recipes_db}
+      POSTGRES_USER: ${POSTGRES_USER:-recipes_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    expose:
+      - "8080"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      neo4j-migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/status/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  fastapi:
+    image: ${RECIPE_IMAGE_PREFIX:-recipe-app}-fastapi:${RECIPE_IMAGE_TAG:-latest}
+    build:
+      context: ./fastapi
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-recipes_db}
+      POSTGRES_USER: ${POSTGRES_USER:-recipes_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    expose:
+      - "8000"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    image: ${RECIPE_IMAGE_PREFIX:-recipe-app}-frontend:${RECIPE_IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      RECIPE_API_URL: http://api:8080
+      NEXT_PUBLIC_FASTAPI_URL: ${NEXT_PUBLIC_FASTAPI_URL:-http://localhost:8001}
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+      fastapi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+  neo4j_prod_data:
+  neo4j_prod_logs:
+

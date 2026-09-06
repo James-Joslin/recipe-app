@@ -1,0 +1,92 @@
+version: 2
+
+updates:
+  - package-ecosystem: docker
+    directory: /api
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: dotnet/sdk
+        update-types:
+          - version-update:semver-major
+      - dependency-name: dotnet/aspnet
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: docker
+    directory: /fastapi
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: docker
+    directory: /migrations
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: docker
+    directory: /neo4j-migrations
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      codeql:
+        patterns:
+          - github/codeql-action/*
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /fastapi
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /migrations
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /neo4j-migrations
+    schedule:
+      interval: weekly
+

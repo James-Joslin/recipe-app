@@ -1,0 +1,43 @@
+# Local environment files
+.env
+.env.*
+!.env.*.example
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+*.user
+*.suo
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Local generated data
+*.log
+*.dump
+*.sql
+playwright-report/
+test-results/
+
+# Docker overrides
+docker-compose.override.yml
+
