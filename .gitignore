@@ -41,3 +41,4 @@ test-results/
 # Docker overrides
 docker-compose.override.yml
 
+deep-research-report (1).md
